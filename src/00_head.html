@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Asteroids-1337</title>
+<meta name="description" content="Asteroids-1337 — a modernized vector arcade shooter with bloom, shockwaves and molten rock. One file, no dependencies.">
+<meta name="theme-color" content="#05060f">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<style>
+:root{
+  --neon:#7df9ff; --violet:#b98cff; --hot:#ff2e88; --amber:#ffb347;
+  --bg:#05060f; --panel:rgba(10,13,28,.82);
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"DejaVu Sans Mono","Courier New",monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:#e8f6ff;font-family:var(--mono)}
+body{overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none}
+#app{position:fixed;inset:0;overflow:hidden}
+canvas#game{position:absolute;inset:0;display:block;width:100%;height:100%;background:#05060f;touch-action:none}
+
+/* ---------- screens ---------- */
+.screen{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(ellipse at 50% 40%,rgba(6,10,26,.40),rgba(3,4,10,.86) 72%);
+  backdrop-filter:blur(2px);pointer-events:none;z-index:6}
+.screen.on{display:flex;pointer-events:auto}
+.screen .wrap{width:min(760px,100%);text-align:center;display:flex;flex-direction:column;align-items:center;gap:18px}
+
+/* brand */
+.brand{display:flex;align-items:flex-end;gap:14px;line-height:.9}
+.brand-main{font-size:clamp(34px,9vw,76px);font-weight:800;letter-spacing:.16em;
+  background:linear-gradient(180deg,#ffffff 0%,#a9f3ff 42%,#4fd4ff 74%,#8c6bff 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 18px rgba(90,220,255,.55)) drop-shadow(0 0 46px rgba(120,90,255,.35))}
+.brand-tag{font-size:clamp(20px,5.4vw,46px);font-weight:800;letter-spacing:.04em;color:#0b0716;
+  background:linear-gradient(180deg,#ffd9f2,#ff2e88 60%,#a3004f);
+  padding:2px 12px 6px;border-radius:8px;transform:translateY(-6px);
+  box-shadow:0 0 26px rgba(255,46,136,.6),inset 0 0 18px rgba(255,255,255,.35)}
+.brand-sub{font-size:clamp(9px,2.1vw,12px);letter-spacing:.42em;color:#7fa6c8;text-transform:uppercase}
+.flick{animation:flick 7s infinite}
+@keyframes flick{0%,96%,100%{opacity:1}97%{opacity:.72}98%{opacity:1}99%{opacity:.85}}
+
+/* buttons */
+.btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.btn{font-family:var(--mono);font-size:clamp(11px,2.4vw,14px);font-weight:700;letter-spacing:.26em;
+  padding:13px 26px;border-radius:10px;cursor:pointer;color:#cdefff;
+  border:1px solid rgba(125,249,255,.38);background:rgba(12,24,40,.62);
+  transition:transform .12s ease,box-shadow .18s ease,background .18s ease,border-color .18s;
+  pointer-events:none;text-transform:uppercase}
+.screen.on .btn{pointer-events:auto}
+.btn:hover{border-color:rgba(125,249,255,.85);background:rgba(20,44,66,.85);box-shadow:0 0 26px rgba(125,249,255,.28)}
+.btn:active{transform:scale(.97)}
+.btn.primary{color:#031018;background:linear-gradient(180deg,#9dfbff,#3fd8f5);border-color:#9dfbff;
+  box-shadow:0 0 30px rgba(80,220,255,.5),inset 0 0 12px rgba(255,255,255,.5)}
+.btn.primary:hover{box-shadow:0 0 46px rgba(120,235,255,.75),inset 0 0 12px rgba(255,255,255,.6)}
+.btn.danger{border-color:rgba(255,46,136,.5);color:#ffd3e6;background:rgba(48,10,26,.6)}
+.btn.danger:hover{box-shadow:0 0 26px rgba(255,46,136,.4);border-color:rgba(255,46,136,.9)}
+
+.keys{display:flex;gap:10px 20px;flex-wrap:wrap;justify-content:center;font-size:11px;letter-spacing:.14em;color:#8fb6d4}
+.keys kbd{display:inline-block;min-width:20px;padding:3px 6px;margin-right:3px;border-radius:4px;font-family:var(--mono);
+  border:1px solid rgba(140,200,255,.3);background:rgba(20,34,56,.8);color:#d6f2ff;font-size:10px}
+.best{font-size:11px;letter-spacing:.3em;color:#6f93b2}
+.best span{color:var(--neon)}
+.touch-only{display:none}
+@media (pointer:coarse){.touch-only{display:flex}.desktop-only{display:none}}
+
+/* score panel on game over */
+.stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:100%;max-width:520px}
+.stat{border:1px solid rgba(125,249,255,.16);border-radius:10px;padding:10px 8px;background:rgba(8,14,26,.6)}
+.stat b{display:block;font-size:clamp(16px,4vw,26px);color:#eaffff;letter-spacing:.06em;text-shadow:0 0 18px rgba(125,249,255,.55)}
+.stat i{font-style:normal;font-size:9px;letter-spacing:.3em;color:#7fa6c8}
+.over-title{font-size:clamp(26px,7vw,52px);font-weight:800;letter-spacing:.2em;
+  background:linear-gradient(180deg,#fff,#ff9fcb 60%,#ff2e88);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 24px rgba(255,46,136,.55))}
+.newbest{font-size:11px;letter-spacing:.34em;color:#ffe08a;text-shadow:0 0 18px rgba(255,200,80,.6);animation:pulse 1.1s infinite}
+@keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+
+/* settings */
+#scr-settings .wrap{align-items:stretch;text-align:left;max-width:560px}
+.panel-title{font-size:12px;letter-spacing:.4em;color:var(--neon);text-align:center;margin-bottom:2px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 14px;border-radius:9px;
+  border:1px solid rgba(125,249,255,.13);background:rgba(8,14,26,.62);font-size:11.5px;letter-spacing:.16em;color:#b9d8ee}
+.row .val{color:#eaffff}
+.row select,.row input[type=range]{pointer-events:none;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+  background:rgba(6,12,22,.9);color:#cdefff;border:1px solid rgba(125,249,255,.3);border-radius:6px;padding:5px 7px;outline:none}
+.screen.on .row select,.screen.on .row input[type=range],.screen.on .sw{cursor:pointer;pointer-events:auto}
+.row input[type=range]{width:130px;padding:0;accent-color:#7df9ff}
+.sw{position:relative;width:46px;height:24px;border-radius:14px;border:1px solid rgba(125,249,255,.3);
+  background:rgba(6,12,22,.9);transition:background .18s,border-color .18s;flex:0 0 auto;pointer-events:none}
+.screen.on .sw{pointer-events:auto;cursor:pointer}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+  background:#6c93ae;transition:transform .18s ease,background .18s}
+.sw.on{background:rgba(24,86,102,.85);border-color:rgba(125,249,255,.8);box-shadow:0 0 18px rgba(125,249,255,.3)}
+.sw.on::after{transform:translateX(22px);background:linear-gradient(180deg,#fff,#7df9ff)}
+.settings-hint{font-size:9.5px;letter-spacing:.22em;color:#5d7f9c;text-align:center;line-height:1.9}
+
+/* ---------- touch controls ---------- */
+#touch-ui{position:absolute;inset:0;pointer-events:none;z-index:4;display:none}
+#touch-ui.on{display:block}
+#joy{position:absolute;width:150px;height:150px;pointer-events:auto;touch-action:none;
+  border-radius:50%;border:1.5px solid rgba(125,249,255,.22);background:radial-gradient(circle,rgba(20,60,80,.35),rgba(4,10,20,.15) 70%);
+  bottom:max(22px,env(safe-area-inset-bottom));left:18px;transition:opacity .2s}
+#joy.right{left:auto;right:18px}
+#joy .knob{position:absolute;top:50%;left:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
+  border:1.5px solid rgba(125,249,255,.55);background:radial-gradient(circle at 35% 30%,rgba(125,249,255,.35),rgba(20,50,80,.5));
+  box-shadow:0 0 22px rgba(125,249,255,.35);transition:transform .06s linear}
+#joy .core{position:absolute;top:50%;left:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;
+  background:rgba(125,249,255,.5);box-shadow:0 0 14px rgba(125,249,255,.8)}
+.tbtn{position:absolute;pointer-events:auto;touch-action:none;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:700;letter-spacing:.12em;color:#dff6ff;
+  border:1.5px solid rgba(125,249,255,.35);background:radial-gradient(circle,rgba(16,44,64,.6),rgba(4,10,20,.5));
+  bottom:max(40px,calc(env(safe-area-inset-bottom) + 18px));transition:transform .07s,box-shadow .12s}
+.tbtn.down{transform:scale(.94);box-shadow:0 0 30px rgba(125,249,255,.6)}
+#btn-fire{right:26px;width:96px;height:96px;border-color:rgba(255,46,136,.5);
+  background:radial-gradient(circle,rgba(70,12,40,.7),rgba(10,4,14,.6));color:#ffd3e6;box-shadow:0 0 22px rgba(255,46,136,.25)}
+#btn-fire.down{box-shadow:0 0 40px rgba(255,46,136,.75)}
+#btn-surge{right:132px;bottom:max(24px,calc(env(safe-area-inset-bottom) + 4px));width:62px;height:62px;font-size:9px}
+#btn-hyper{right:136px;bottom:max(96px,calc(env(safe-area-inset-bottom) + 76px));width:54px;height:54px;font-size:8.5px}
+#touch-ui.right #joy{left:auto;right:18px}
+#touch-ui.right #btn-fire{right:auto;left:26px}
+#touch-ui.right #btn-surge{right:auto;left:132px}
+#touch-ui.right #btn-hyper{right:auto;left:136px;bottom:max(96px,calc(env(safe-area-inset-bottom) + 76px))}
+@media (max-width:420px){
+  #joy{width:126px;height:126px}
+  #btn-fire{width:82px;height:82px}
+}
+#rotate-hint{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:9;
+  background:rgba(3,4,10,.92);color:#9fc4e0;font-size:12px;letter-spacing:.3em;text-align:center;padding:24px;line-height:2}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <div id="touch-ui">
+    <div id="joy"><div class="knob"></div><div class="core"></div></div>
+    <div class="tbtn" id="btn-fire">FIRE</div>
+    <div class="tbtn" id="btn-surge">SURGE</div>
+    <div class="tbtn" id="btn-hyper">HYPER</div>
+  </div>
+
+  <div class="screen on" id="scr-title">
+    <div class="wrap">
+      <div class="brand flick"><div class="brand-main">ASTEROIDS</div><div class="brand-tag">1337</div></div>
+      <div class="brand-sub">vector survival &middot; ultra edition</div>
+      <div class="btns">
+        <button class="btn primary" id="btn-start">Launch</button>
+        <button class="btn" id="btn-settings">Settings</button>
+      </div>
+      <div class="keys desktop-only">
+        <span><kbd>&larr;</kbd><kbd>&rarr;</kbd>ROTATE</span>
+        <span><kbd>&uarr;</kbd>THRUST</span>
+        <span><kbd>SPACE</kbd>FIRE</span>
+        <span><kbd>SHIFT</kbd>HYPERSPACE</span>
+        <span><kbd>E</kbd>SURGE</span>
+        <span><kbd>P</kbd>PAUSE</span>
+      </div>
+      <div class="keys touch-only">DRAG THE STICK TO FLY &middot; TAP FIRE &middot; SURGE WHEN CHARGED</div>
+      <div class="best">BEST <span id="best-title">0</span></div>
+    </div>
+  </div>
+
+  <div class="screen" id="scr-over">
+    <div class="wrap">
+      <div class="over-title">SHIP LOST</div>
+      <div class="newbest" id="newbest" style="display:none">NEW RECORD</div>
+      <div class="stat-grid">
+        <div class="stat"><i>SCORE</i><b id="ov-score">0</b></div>
+        <div class="stat"><i>WAVE</i><b id="ov-wave">1</b></div>
+        <div class="stat"><i>BEST</i><b id="ov-best">0</b></div>
+      </div>
+      <div class="btns">
+        <button class="btn primary" id="btn-again">Redeploy</button>
+        <button class="btn" id="btn-menu">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="scr-pause">
+    <div class="wrap">
+      <div class="panel-title">PAUSED</div>
+      <div class="btns">
+        <button class="btn primary" id="btn-resume">Resume</button>
+        <button class="btn" id="btn-quit">Abandon Ship</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="scr-settings">
+    <div class="wrap">
+      <div class="panel-title">SYSTEM CONFIG</div>
+      <div class="row"><span>GRAPHICS</span>
+        <select id="set-quality">
+          <option value="high">Ultra (bloom + aberration)</option>
+          <option value="balanced">Balanced</option>
+          <option value="performance">Performance</option>
+        </select>
+      </div>
+      <div class="row"><span>BLOOM</span><div class="sw on" id="set-bloom"></div></div>
+      <div class="row"><span>CRT SCANLINES</span><div class="sw on" id="set-crt"></div></div>
+      <div class="row"><span>SCREEN SHAKE</span><div class="sw on" id="set-shake"></div></div>
+      <div class="row"><span>AUDIO</span><div class="sw on" id="set-sound"></div></div>
+      <div class="row"><span>VOLUME</span><input type="range" id="set-volume" min="0" max="100" value="55"></div>
+      <div class="row"><span>TOUCH HAND</span>
+        <select id="set-hand"><option value="auto">Auto</option><option value="left">Stick left</option><option value="right">Stick right</option></select>
+      </div>
+      <div class="btns"><button class="btn" id="btn-reset">Clear Best</button><button class="btn primary" id="btn-close-settings">Back</button></div>
+      <div class="settings-hint">AUTOSAVED LOCALLY &middot; NO NETWORK, NO TRACKERS</div>
+    </div>
+  </div>
+</div>
+<script>
